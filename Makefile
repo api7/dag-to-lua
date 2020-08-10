@@ -29,6 +29,11 @@ test:
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/default.lua
 
 
+### lint:             Lint Lua source code
+.PHONY: lint
+lint: utils
+	./utils/check-lua-code-style.sh
+
 ### clean:        Clean the test case
 .PHONY: clean
 clean:
