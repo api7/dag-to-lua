@@ -56,8 +56,6 @@ end
 
 function codectx_mt:generate(rule, conf)
   local root = self._root
-  -- conf
-  -- generate_conf(root, conf)
   --rule
   root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf), "\n\n")
   -- other phose
@@ -218,18 +216,19 @@ local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions, target_ids)
 
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
-        local func_target = "func_rule_conf_" .. string.gsub(target_id, '-', '_')
+        local func_target = func_lua_name(target_id)
         target_ids[target_id] = 1
         -- condition
         if condition_arr[1] ~= "" then
             root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    return %s(conf, ctx)', func_target))
+            root:preface(sformat('    return _M.%s(conf, ctx)', func_target))
             root:preface(        '  end\n')
         else
-            root:preface(sformat('  return %s(conf, ctx)', func_target))
+            root:preface(sformat('  return _M.%s(conf, ctx)', func_target))
         end
     end
-    root:preface(        'end\n\n')
+    root:preface(        'end')
+    root:preface(sformat('_M.%s = %s\n\n', func_lua, func_lua))
 
     return func_lua
 end
@@ -254,7 +253,8 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
     root:preface(sformat('  %s.access(%s, ctx)', plugin_name_lua, conf_lua))
 
     root:preface(        'return\n')
-    root:preface(        'end\n\n')
+    root:preface(        'end')
+    root:preface(sformat('_M.%s = %s\n\n', func_lua, func_lua))
 
     return func_lua
 end
