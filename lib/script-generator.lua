@@ -421,14 +421,24 @@ generate_conf = function (ctx, conf)
   ctx:preface("\n")
 end
 
+local function conf_lua_name(rule_id)
+  local conf_lua = "conf_" .. string.gsub(rule_id, '-', '_')
+  return conf_lua
+end
+
+local function func_lua_name(rule_id)
+  local conf_lua = "func_rule_" .. string.gsub(rule_id, '-', '_')
+  return conf_lua
+end
+
 local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions)
     local root = ctx._root
     local plugin_name = plugin_conf.name
     local plugin_name_lua = plugin_name:gsub('-', '_')
 
     -- conf
-    local conf_lua = "conf_" .. string.gsub(rule_id, '-', '_')
-    local func_lua = "func_rule_" .. conf_lua
+    local conf_lua = conf_lua_name(rule_id)
+    local func_lua = func_lua_name(rule_id)
 
     root:preface("local " .. conf_lua .. " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
 
@@ -467,12 +477,14 @@ generate_rule = function (ctx, rules, conf)
   local added_first_call_func
 
   for rule_id, conditions in pairs(rules) do
-    local func_rule_name = _gen_rule_lua(ctx, rule_id, conf[rule_id], conditions)
-    if not added_first_call_func then
-      added_first_call_func = true
-      ctx:stmt(sformat("return %s()", func_rule_name))
+    if rule_id ~= "root" then
+      local func_rule_name = _gen_rule_lua(ctx, rule_id, conf[rule_id], conditions)
     end
   end
+
+  root_func = func_lua_name(rules.root)
+  ctx:stmt(sformat("return %s()", root_func))
+
 
   return ctx
 end
