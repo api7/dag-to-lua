@@ -3,6 +3,7 @@ local script_generator = require 'script-generator'
 local script = [[
 {
     "rule":{
+        "root": "11-22-33-44",
         "11-22-33-44":[
             [
                 "code == 200",
