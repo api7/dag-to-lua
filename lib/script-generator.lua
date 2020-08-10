@@ -213,7 +213,6 @@ local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions, target_ids)
     -- function
     root:preface(sformat('local function %s(conf, ctx)', func_lua))
 
-    -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]
     root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
       plugin_name_lua, plugin_name_lua))
 
@@ -298,9 +297,9 @@ end
 
 
 local function generate_ctx(conf, options)
-  local data = json_decode(conf)
+  local data, err = json_decode(conf)
   if data == nil then
-      return nil, "parse conf failed"
+      return nil, err
   end
 
   data.rule = data.rule or {}
