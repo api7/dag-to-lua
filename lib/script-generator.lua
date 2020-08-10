@@ -1,17 +1,15 @@
 local loadstring = loadstring
-local tostring = tostring
 local pairs = pairs
 local ipairs = ipairs
 local unpack = unpack or table.unpack
 local sformat = string.format
-local mmax, mmodf = math.max, math.modf
+local mmax = math.max
 local DEBUG = os and os.getenv and os.getenv('DEBUG') == '1'
 local tab_concat = table.concat
 local tab_insert = table.insert
 local string = string
 
-local match_pattern = ngx.re.find
-local nkeys = require("table.nkeys")
+local tab_nkeys = require("table.nkeys")
 
 local json_decode = require("cjson.safe").decode
 local json_encode = require("cjson.safe").encode
@@ -32,7 +30,7 @@ function codectx_mt:libfunc(globalname)
 
   if not localname then
     localname = globalname:gsub('%.', '_')
-    root._globals[globalname] = localname    
+    root._globals[globalname] = localname
     root:preface(sformat('local %s = %s', localname, globalname))
   end
   return localname
@@ -406,7 +404,7 @@ end
 
 
 generate_phase = function(ctx, schema)
-  
+
   ctx:stmt('return true')
   return ctx
 end
@@ -418,7 +416,7 @@ generate_conf = function (ctx, conf)
     return nil
   end
   for id, data in pairs(conf) do
-    
+
   end
   ctx:preface("\n")
 end
@@ -448,8 +446,8 @@ generate_rule = function (ctx, rule, conf)
     end
     loaded_plugins[plugin_name] = 1
 
-    -- 
-    -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]   
+    --
+    -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]
 
     for _, leaf in pairs(leafs) do
       -- condition
@@ -488,11 +486,12 @@ end
 
 
 return {
-  generate = function(conf, options)
-    local cxt, err = generate_ctx(conf, options)
-    if not cxt then
-      return nil, err
-    end
-    return cxt:as_lua(), nil
-  end,
+    generate = function(conf, options)
+        local cxt, err = generate_ctx(conf, options)
+        if not cxt then
+            return nil, err
+        end
+
+        return cxt:as_lua(), nil
+    end,
 }
