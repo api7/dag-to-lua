@@ -455,15 +455,12 @@ generate_rule = function (ctx, rules, conf)
       -- condition
       if conditions[1] ~= "" then
           ctx:stmt(sformat('if %s then', conditions[1]))
-          ctx:stmt(sformat('    %s.access(%s, ctx)', plugin_name_lua, conf_var))
+          ctx:stmt(sformat('    return %s.access(%s, ctx)', plugin_name_lua, conf_var))
+          ctx:stmt(        'end\n')
       else
-          ctx:stmt(        'else')
-          ctx:stmt(sformat('    %s.access(%s, ctx)', plugin_name_lua, conf_var))
+          ctx:stmt(sformat('return %s.access(%s, ctx)\n', plugin_name_lua, conf_var))
       end
-      ctx:stmt(            'end')
     end
-
-    -- ctx:stmt('return true')
   end
 
   return ctx
