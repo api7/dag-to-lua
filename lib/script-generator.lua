@@ -472,14 +472,14 @@ local function generate_ctx(conf, options)
       return nil, "parse conf failed"
   end
 
-  local rule = data.rule and data.rule or {}
-  local conf = data.conf and data.conf or {}
-  local ctx = codectx(rule, conf, options or {})
+  data.rule = data.rule or {}
+  data.conf = data.conf or {}
+  local ctx = codectx(data.rule, data.conf, options or {})
 
   ctx:preface('local core = require("apisix.core")')
   ctx:preface('local plugin = require("apisix.plugin")')
 
-  ctx:stmt('return ', ctx:generate(rule, conf))
+  ctx:stmt('return ', ctx:generate(data.rule, data.conf))
 
   return ctx, nil
 end
