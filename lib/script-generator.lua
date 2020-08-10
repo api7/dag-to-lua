@@ -80,9 +80,9 @@ function codectx_mt:generate(rule, conf)
   -- conf
   -- generate_conf(root, conf)
   --rule
-  root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(ref), rule, conf))
+  root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf))
   -- other phose
-  root:stmt(sformat('%s = ', "_M.log"), generate_phase(root:child(ref)))
+  root:stmt(sformat('%s = ', "_M.log"), generate_phase(root:child()))
   return "_M"
 end
 
@@ -421,43 +421,46 @@ generate_conf = function (ctx, conf)
   ctx:preface("\n")
 end
 
-generate_rule = function (ctx, rule, conf)
-  if type(rule) ~= "table" then
+generate_rule = function (ctx, rules, conf)
+  if type(rules) ~= "table" then
     return nil
   end
 
   local root = ctx._root
-  root:preface([[local _M = {
-    plugins = {},
-  }
-  ]])
+  root:preface([[local _M = {}]])
+  root:preface("")
 
   local loaded_plugins = {}
-  local data, plugin_name, local_name
-  for id, leafs in pairs(rule) do
+  local data, plugin_name
+  for id, rule in pairs(rules) do
     data = conf[id]
     plugin_name = data.name
-    local_name = plugin_name:gsub('-', '_')
+    local plugin_name_lua = plugin_name:gsub('-', '_')
+
+    local conf_var = "conf_" .. string.gsub(id, '-', '_')
     -- conf
-    root:preface("local " .. id .. " = core.json.decode[[" .. json_encode(data.conf) .. "]]")
+    root:preface("local " .. conf_var .. " = core.json.decode(\n    [["
+                 .. json_encode(data.conf) .. "]]\n)")
+    root:preface("")
 
     if loaded_plugins[plugin_name] == nil then
-      ctx:stmt(sformat('local %s = plugin.get("%s")', local_name, plugin_name))
+        root:preface(sformat('local %s = plugin.get("%s")\n', plugin_name_lua, plugin_name))
+        loaded_plugins[plugin_name] = true
     end
-    loaded_plugins[plugin_name] = 1
 
     --
     -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]
 
-    for _, leaf in pairs(leafs) do
+    for _, conditions in pairs(rule) do
       -- condition
-      if leaf[1] ~= "" then
-        ctx:stmt(sformat(' if %s then', leaf[1]))
-        ctx:stmt(sformat(' goto %s ', leaf[2]))
+      if conditions[1] ~= "" then
+          ctx:stmt(sformat('if %s then', conditions[1]))
+          ctx:stmt(sformat('    %s.access(%s, ctx)', plugin_name_lua, conf_var))
       else
-        ctx:stmt('else')
-        ctx:stmt(sformat(' goto %s ', leaf[2]))
+          ctx:stmt(        'else')
+          ctx:stmt(sformat('    %s.access(%s, ctx)', plugin_name_lua, conf_var))
       end
+      ctx:stmt(            'end')
     end
 
     -- ctx:stmt('return true')
