@@ -58,7 +58,7 @@ function codectx_mt:generate(rule, conf)
   local root = self._root
   --rule
   root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf), "\n\n")
-  -- other phose
+  -- other phase
   root:stmt(sformat('%s = ', "_M.log"), generate_phase(root:child()), "\n\n")
   return "_M"
 end
@@ -212,7 +212,12 @@ local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions, target_ids)
     root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
     -- function
     root:preface(sformat('local function %s(conf, ctx)', func_lua))
-    root:preface(sformat('  local code, body = %s.access(%s, ctx)', plugin_name_lua, conf_lua))
+
+    -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]
+    root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
+      plugin_name_lua, plugin_name_lua))
+
+    root:preface(sformat('  local code, body = phase_fun(%s, ctx)', conf_lua))
 
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
