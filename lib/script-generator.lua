@@ -336,7 +336,6 @@ validatorlib.unique_item_in_array = unique_item_in_array
 --
 -- Validation generator
 --
-
 -- generate an expression to check a JSON type
 local function typeexpr(ctx, jsontype, datatype, tablekind)
   -- TODO: optimize the type check for arays/objects (using NaN as kind?)
@@ -410,28 +409,23 @@ generate_phase = function(ctx, schema)
 end
 
 
-generate_conf = function (ctx, conf)
-  ctx:preface("\n")
-  if type(conf) ~= "table" then
-    return nil
-  end
-  for id, data in pairs(conf) do
-
-  end
-  ctx:preface("\n")
-end
-
 local function conf_lua_name(rule_id)
   local conf_lua = "conf_" .. string.gsub(rule_id, '-', '_')
   return conf_lua
 end
+
 
 local function func_lua_name(rule_id)
   local conf_lua = "func_rule_" .. string.gsub(rule_id, '-', '_')
   return conf_lua
 end
 
-local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions)
+
+local function _gen_common_phase_lua(ctx)
+end
+
+
+local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions, target_ids)
     local root = ctx._root
     local plugin_name = plugin_conf.name
     local plugin_name_lua = plugin_name:gsub('-', '_')
@@ -450,20 +444,46 @@ local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions)
 
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
-        local func_rule_name_node = "func_rule_conf_" .. string.gsub(target_id, '-', '_')
+        local func_target = "func_rule_conf_" .. string.gsub(target_id, '-', '_')
+        target_ids[target_id] = 1
         -- condition
         if condition_arr[1] ~= "" then
             root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    return %s(conf, ctx)', func_rule_name_node))
+            root:preface(sformat('    return %s(conf, ctx)', func_target))
             root:preface(        '  end\n')
         else
-            root:preface(sformat('  return %s(conf, ctx)', func_rule_name_node))
+            root:preface(sformat('  return %s(conf, ctx)', func_target))
         end
     end
     root:preface(        'end\n\n')
 
     return func_lua
 end
+
+
+local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
+    local root = ctx._root
+    local plugin_name = plugin_conf.name
+    local plugin_name_lua = plugin_name:gsub('-', '_')
+
+    -- conf
+    local conf_lua = conf_lua_name(rule_id)
+    local func_lua = func_lua_name(rule_id)
+
+    root:preface("local " .. conf_lua .. " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
+
+    -- plugin
+    root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
+    -- function
+    root:preface(sformat('local function %s(conf, ctx)', func_lua))
+    root:preface(sformat('  %s.access(%s, ctx)', plugin_name_lua, conf_lua))
+
+    root:preface(        'return\n')
+    root:preface(        'end\n\n')
+
+    return func_lua
+end
+
 
 generate_rule = function (ctx, rules, conf)
   if type(rules) ~= "table" then
@@ -474,20 +494,28 @@ generate_rule = function (ctx, rules, conf)
   root:preface([[local _M = {}]])
   root:preface("\n")
 
-  local added_first_call_func
+  local rule_ids, target_ids = {}, {}
 
   for rule_id, conditions in pairs(rules) do
     if rule_id ~= "root" then
-      local func_rule_name = _gen_rule_lua(ctx, rule_id, conf[rule_id], conditions)
+      rule_ids[rule_id] = 1
+      local func_rule_name = _gen_rule_lua(ctx, rule_id, conf[rule_id], conditions, target_ids)
+    end
+  end
+
+  for target_id,_ in pairs(target_ids) do
+    -- last node
+    if not rule_ids[target_id] then
+      _gen_last_rule_lua(ctx, target_id, conf[target_id])
     end
   end
 
   root_func = func_lua_name(rules.root)
   ctx:stmt(sformat("return %s()", root_func))
 
-
   return ctx
 end
+
 
 local function generate_ctx(conf, options)
   local data = json_decode(conf)
