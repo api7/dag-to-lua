@@ -421,6 +421,40 @@ generate_conf = function (ctx, conf)
   ctx:preface("\n")
 end
 
+local function _gen_rule_lua(ctx, rule_id, plugin_conf, conditions)
+    local root = ctx._root
+    local plugin_name = plugin_conf.name
+    local plugin_name_lua = plugin_name:gsub('-', '_')
+
+    -- conf
+    local conf_lua = "conf_" .. string.gsub(rule_id, '-', '_')
+    local func_lua = "func_rule_" .. conf_lua
+
+    root:preface("local " .. conf_lua .. " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
+
+    -- plugin
+    root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
+    -- function
+    root:preface(sformat('local function %s(conf, ctx)', func_lua))
+    root:preface(sformat('  local code, body = %s.access(%s, ctx)', plugin_name_lua, conf_lua))
+
+    for key, condition_arr in pairs(conditions) do
+        local target_id = condition_arr[2]
+        local func_rule_name_node = "func_rule_conf_" .. string.gsub(target_id, '-', '_')
+        -- condition
+        if condition_arr[1] ~= "" then
+            root:preface(sformat('  if %s then', condition_arr[1]))
+            root:preface(sformat('    return %s(conf, ctx)', func_rule_name_node))
+            root:preface(        '  end\n')
+        else
+            root:preface(sformat('  return %s(conf, ctx)', func_rule_name_node))
+        end
+    end
+    root:preface(        'end\n\n')
+
+    return func_lua
+end
+
 generate_rule = function (ctx, rules, conf)
   if type(rules) ~= "table" then
     return nil
@@ -430,36 +464,10 @@ generate_rule = function (ctx, rules, conf)
   root:preface([[local _M = {}]])
   root:preface("\n")
 
-  local loaded_plugins = {}
-  local data, plugin_name
   local added_first_call_func
 
-  for id, rule in pairs(rules) do
-    data = conf[id]
-    plugin_name = data.name
-    local plugin_name_lua = plugin_name:gsub('-', '_')
-
-    local conf_var = "conf_" .. string.gsub(id, '-', '_')
-    -- conf
-    root:preface("local " .. conf_var .. " = core.json.decode(\n    [["
-                 .. json_encode(data.conf) .. "]]\n)")
-    root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
-
-    local func_rule_name = "func_rule_" .. conf_var
-    root:preface(sformat('local %s = function(conf, ctx)', func_rule_name))
-
-    for key, conditions in pairs(rule) do
-      -- condition
-      if conditions[1] ~= "" then
-          root:preface(sformat('  if %s then', conditions[1]))
-          root:preface(sformat('    return %s.access(%s, ctx)', plugin_name_lua, conf_var))
-          root:preface(        '  end\n')
-      else
-          root:preface(sformat('  return %s.access(%s, ctx)\n', plugin_name_lua, conf_var))
-      end
-    end
-    root:preface(        'end\n\n')
-
+  for rule_id, conditions in pairs(rules) do
+    local func_rule_name = _gen_rule_lua(ctx, rule_id, conf[rule_id], conditions)
     if not added_first_call_func then
       added_first_call_func = true
       ctx:stmt(sformat("return %s()", func_rule_name))
