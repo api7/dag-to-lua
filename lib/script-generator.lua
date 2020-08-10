@@ -80,9 +80,9 @@ function codectx_mt:generate(rule, conf)
   -- conf
   -- generate_conf(root, conf)
   --rule
-  root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf))
+  root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf), "\n\n")
   -- other phose
-  root:stmt(sformat('%s = ', "_M.log"), generate_phase(root:child()))
+  root:stmt(sformat('%s = ', "_M.log"), generate_phase(root:child()), "\n\n")
   return "_M"
 end
 
@@ -428,10 +428,12 @@ generate_rule = function (ctx, rules, conf)
 
   local root = ctx._root
   root:preface([[local _M = {}]])
-  root:preface("")
+  root:preface("\n")
 
   local loaded_plugins = {}
   local data, plugin_name
+  local added_first_call_func
+
   for id, rule in pairs(rules) do
     data = conf[id]
     plugin_name = data.name
@@ -441,25 +443,26 @@ generate_rule = function (ctx, rules, conf)
     -- conf
     root:preface("local " .. conf_var .. " = core.json.decode(\n    [["
                  .. json_encode(data.conf) .. "]]\n)")
-    root:preface("")
+    root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
 
-    if loaded_plugins[plugin_name] == nil then
-        root:preface(sformat('local %s = plugin.get("%s")\n', plugin_name_lua, plugin_name))
-        loaded_plugins[plugin_name] = true
-    end
+    local func_rule_name = "func_rule_" .. conf_var
+    root:preface(sformat('local %s = function(conf, ctx)', func_rule_name))
 
-    --
-    -- local condition_fun1 = limit_count["access"] and limit_count["access"] or limit_count["rewrite"]
-
-    for _, conditions in pairs(rule) do
+    for key, conditions in pairs(rule) do
       -- condition
       if conditions[1] ~= "" then
-          ctx:stmt(sformat('if %s then', conditions[1]))
-          ctx:stmt(sformat('    return %s.access(%s, ctx)', plugin_name_lua, conf_var))
-          ctx:stmt(        'end\n')
+          root:preface(sformat('  if %s then', conditions[1]))
+          root:preface(sformat('    return %s.access(%s, ctx)', plugin_name_lua, conf_var))
+          root:preface(        '  end\n')
       else
-          ctx:stmt(sformat('return %s.access(%s, ctx)\n', plugin_name_lua, conf_var))
+          root:preface(sformat('  return %s.access(%s, ctx)\n', plugin_name_lua, conf_var))
       end
+    end
+    root:preface(        'end\n\n')
+
+    if not added_first_call_func then
+      added_first_call_func = true
+      ctx:stmt(sformat("return %s()", func_rule_name))
     end
   end
 

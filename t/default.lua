@@ -6,30 +6,14 @@ local script = [[
         "11-22-33-44":[
             [
                 "code == 200",
-                "aa-bb-cc-dd"
-            ],
-            [
-                "",
-                "qq-ww-ee-rr"
-            ]
-        ],
-        "aa-bb-cc-dd":[
-            [
-                "code == 200",
                 "yy-uu-ii-oo"
             ],
             [
                 "",
-                "vv-cc-xx-zz"
-            ]
-        ],
-        "yy-uu-ii-oo":[
-            [
-                "",
                 "qq-ww-ee-rr"
             ]
         ],
-        "vv-cc-xx-zz":[
+        "yy-uu-ii-oo":[
             [
                 "",
                 "qq-ww-ee-rr"
@@ -46,27 +30,12 @@ local script = [[
               "key":"remote_addr"
             }
         },
-        "aa-bb-cc-dd":{
-          "name": "key-auth",
-          "conf": {
-              "key":"auth-one"
-            }
-        },
         "yy-uu-ii-oo":{
           "name": "response-rewrite",
           "conf": {
               "body":{"code":"ok","message":"new json body"},
               "headers":{
                   "X-Logined-status":1
-              }
-            }
-        },
-        "vv-cc-xx-zz":{
-          "name": "response-rewrite",
-          "conf": {
-              "body":{"code":"ok","message":"new json body"},
-              "headers":{
-                  "X-Logined-status":0
               }
             }
         },
