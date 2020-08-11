@@ -31,9 +31,12 @@ function codectx_mt:libfunc(globalname)
 end
 
 
-function codectx_mt:param(n)
-    self._nparams = mmax(n, self._nparams)
-    return 'p_' .. n
+local function q(s) return sformat('%q', s) end
+
+
+function codectx_mt:param(param)
+    tab_insert(self._params, param)
+    return param
 end
 
 
@@ -105,11 +108,8 @@ function codectx_mt:_generate(code_table)
         end
     else
         insert_code('function(', code_table)
-        for i=1, self._nparams do
-            insert_code('p_' .. i, code_table)
-            if i ~= self._nparams then
-                insert_code(', ', code_table)
-            end
+        for _,param in ipairs(self._params) do
+            insert_code(param, code_table)
         end
         insert_code(')\n', code_table)
         indent = string.rep('  ', self._idx)
@@ -152,7 +152,7 @@ function codectx_mt:child(ref)
       _nlabels = 0,
       _body = {},
       _root = self._root,
-      _nparams = 0,
+      _params = {},
   }, codectx_mt)
 end
 
@@ -185,7 +185,8 @@ generate_common_phase = function(ctx, schema)
     ctx:stmt('    local plugin_obj = plugin.get(plugin_name)')
     ctx:stmt('    local phase_fun = plugin_obj.header_filter')
     ctx:stmt('    if phase_fun then')
-    ctx:stmt('        local code, body = phase_fun(_M.conf[plugin_conf_name], ctx)')
+    ctx:stmt(sformat('        local code, body = phase_fun(_M.conf[plugin_conf_name], %s)',
+      ctx:param("ctx")))
     ctx:stmt('        if code or body then')
     ctx:stmt('            core.response.exit(code, body)')
     ctx:stmt('        end')
@@ -243,7 +244,7 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
     root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
       plugin_name_lua, plugin_name_lua))
 
-    root:preface(sformat('  local code, body = phase_fun(%s, ctx)', conf_lua))
+    root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', conf_lua))
 
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
@@ -251,17 +252,16 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
         target_ids[target_id] = 1
         local target_plugin_conf = conf[target_id]
         local target_plugin_name = target_plugin_conf.name
-        local target_plugin_name_lua = plugin_lua_name(target_plugin_name)
         -- condition
         if condition_arr[1] ~= "" then
             root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_plugin_name))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_id))
+            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_plugin_name)))
+            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_id)))
             root:preface(sformat('    return _M.%s(conf, ctx)', func_target))
             root:preface(        '  end\n')
         else
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_plugin_name))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_id))          
+            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_plugin_name)))
+            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_id)))
             root:preface(sformat('  return _M.%s(conf, ctx)', func_target))
         end
     end
@@ -292,10 +292,7 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
     root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
       plugin_name_lua, plugin_name_lua))
 
-    root:preface(sformat('  phase_fun(%s, ctx)', conf_lua))    
-
-    root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_plugin_name))
-    root:preface(sformat('    core.table.insert(_M.plugins, %s)', target_id))
+    root:preface(sformat('  phase_fun(%s, ctx)', conf_lua))
 
     root:preface(        'return\n')
     root:preface(        'end')
@@ -311,7 +308,11 @@ generate_rule = function (ctx, rules, conf)
     end
 
     local root = ctx._root
-    root:preface([[local _M = {}]])
+    root:preface([[local _M = {
+      plugins = {},
+    }
+    ]])
+
     root:preface("\n")
 
     local rule_ids, target_ids = {}, {}
@@ -331,7 +332,7 @@ generate_rule = function (ctx, rules, conf)
     end
 
     local root_func = func_lua_name(rules.root)
-    ctx:stmt(sformat("return %s()", root_func))
+    ctx:stmt(sformat("return %s(%s)", root_func, ctx:param("ctx")))
 
     return ctx
 end
@@ -358,11 +359,11 @@ end
 
 return {
     generate = function(conf, options)
-        local cxt, err = generate_ctx(conf, options)
-        if not cxt then
+        local ctx, err = generate_ctx(conf, options)
+        if not ctx then
             return nil, err
         end
 
-        return cxt:as_lua(), nil
+        return ctx:as_lua(), nil
     end,
 }

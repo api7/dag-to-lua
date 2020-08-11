@@ -3,49 +3,44 @@ local script_generator = require 'script-generator'
 local script = [[
 {
     "rule":{
-        "root": "z1-22-33-44",
-        "z1-22-33-44":[
+        "root": "11-22-33-44",
+        "11-22-33-44":[
             [
-                "code == 200",
+                "code == 503",
                 "yy-uu-ii-oo"
             ],
             [
                 "",
-                "qq-ww-ee-rr"
-            ]
-        ],
-        "yy-uu-ii-oo":[
-            [
-                "",
-                "qq-ww-ee-rr"
+                "vv-cc-xx-zz"
             ]
         ]
     },
     "conf":{
-        "z1-22-33-44":{
-          "name": "limit-count",
-          "conf": {
-              "count":2,
-              "time_window":60,
-              "rejected_code":503,
-              "key":"remote_addr"
+        "11-22-33-44":{
+            "name": "limit-count",
+            "conf": {
+                "count":2,
+                "time_window":60,
+                "rejected_code":503,
+                "key":"remote_addr"
             }
         },
         "yy-uu-ii-oo":{
-          "name": "response-rewrite",
-          "conf": {
-              "body":{"code":"ok","message":"new json body"},
-              "headers":{
-                  "X-Logined-status":1
-              }
+            "name": "response-rewrite",
+            "conf": {
+                "body":{"code":"ok","message":"request has been limited."},
+                "headers":{
+                    "X-limit-status": "limited"
+                }
             }
         },
-        "qq-ww-ee-rr":{
-          "name" : "syslog",
-          "conf": {
-              "host":"127.0.0.1",
-              "port":5044,
-              "flush_limit":1
+        "vv-cc-xx-zz":{
+            "name": "response-rewrite",
+            "conf": {
+                "body":{"code":"ok","message":"normal request"},
+                "headers":{
+                    "X-limit-status": "normal"
+                }
             }
         }
     }
