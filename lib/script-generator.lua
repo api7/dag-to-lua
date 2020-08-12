@@ -294,7 +294,7 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
 
     root:preface(sformat('  phase_fun(%s, ctx)', conf_lua))
 
-    root:preface(        'return\n')
+    root:preface(        '  return')
     root:preface(        'end')
     root:preface(sformat('_M.%s = %s\n\n', func_lua, func_lua))
 
