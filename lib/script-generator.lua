@@ -64,7 +64,9 @@ function codectx_mt:generate(rule, conf)
     -- other phase
     root:stmt(sformat('%s = ', "_M.header_filter"), generate_common_phase(root:child()), "\n\n")
     root:stmt(sformat('%s = ', "_M.body_filter"), generate_common_phase(root:child()), "\n\n")
-    root:stmt(sformat('%s = ', "_M.log"), generate_common_phase(root:child()), "\n\n")
+
+    local release_plugins = 'tablepool.release("script_plugins", ctx.plugins)'
+    root:stmt(sformat('%s = ', "_M.log"), generate_common_phase(root:child(), release_plugins), "\n\n")
     return "_M"
 end
 
@@ -178,20 +180,23 @@ local function codectx(rule, conf, options)
 end
 
 
-generate_common_phase = function(ctx, schema)
-    ctx:stmt('for i = 1, #_M.plugins, 2 do')
-    ctx:stmt('    local plugin_name = _M.plugins[i]')
-    ctx:stmt('    local plugin_conf_name = _M.plugins[i + 1]')
-    ctx:stmt('    local plugin_obj = plugin.get(plugin_name)')
-    ctx:stmt('    local phase_fun = plugin_obj.header_filter')
-    ctx:stmt('    if phase_fun then')
-    ctx:stmt(sformat('        local code, body = phase_fun(_M.conf[plugin_conf_name], %s)',
-      ctx:param("ctx")))
-    ctx:stmt('        if code or body then')
-    ctx:stmt('            core.response.exit(code, body)')
-    ctx:stmt('        end')
-    ctx:stmt('    end')
-    ctx:stmt('end')
+generate_common_phase = function(ctx, tail_lua)
+    ctx:stmt(        'local plugins = ctx.plugins')
+    ctx:stmt(        'for i = 1, #plugins, 2 do')
+    ctx:stmt(        '    local plugin_name = plugins[i]')
+    ctx:stmt(        '    local plugin_conf_name = plugins[i + 1]')
+    ctx:stmt(        '    local plugin_obj = plugin.get(plugin_name)')
+    ctx:stmt(        '    local phase_fun = plugin_obj.header_filter')
+    ctx:stmt(        '    if phase_fun then')
+    ctx:stmt(sformat('        local code, body = phase_fun(_M.conf[plugin_conf_name], %s)', ctx:param("ctx")))
+    ctx:stmt(        '        if code or body then')
+    ctx:stmt(        '            core.response.exit(code, body)')
+    ctx:stmt(        '        end')
+    ctx:stmt(        '    end')
+    ctx:stmt(        'end')
+    if tail_lua then
+      ctx:stmt(      tail_lua)
+    end
     return ctx
 end
 
@@ -233,16 +238,15 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
     local conf_lua = conf_lua_name(rule_id)
     local func_lua = func_lua_name(rule_id)
 
-    root:preface("local " .. conf_lua ..
-      " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
+    root:preface("local " .. conf_lua .. " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
 
     -- plugin
     root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
     -- function
     root:preface(sformat('local function %s(conf, ctx)', func_lua))
 
-    root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
-      plugin_name_lua, plugin_name_lua))
+    root:preface(sformat('  local phase_fun = %s.access or %s.rewrite', plugin_name_lua, plugin_name_lua))
+    root:preface(        '  local plugins = ctx.plugins\n')
 
     root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', conf_lua))
 
@@ -255,13 +259,13 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
         -- condition
         if condition_arr[1] ~= "" then
             root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_plugin_name)))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_id)))
+            root:preface(sformat('    core.table.insert(plugins, %s)', q(target_plugin_name)))
+            root:preface(sformat('    core.table.insert(plugins, %s)', q(target_id)))
             root:preface(sformat('    return _M.%s(conf, ctx)', func_target))
             root:preface(        '  end\n')
         else
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_plugin_name)))
-            root:preface(sformat('    core.table.insert(_M.plugins, %s)', q(target_id)))
+            root:preface(sformat('  core.table.insert(plugins, %s)', q(target_plugin_name)))
+            root:preface(sformat('  core.table.insert(plugins, %s)', q(target_id)))
             root:preface(sformat('  return _M.%s(conf, ctx)', func_target))
         end
     end
@@ -308,11 +312,7 @@ generate_rule = function (ctx, rules, conf)
     end
 
     local root = ctx._root
-    root:preface([[local _M = {
-      plugins = {},
-    }
-    ]])
-
+    root:preface([[local _M = {}]])
     root:preface("\n")
 
     local rule_ids, target_ids = {}, {}
@@ -350,6 +350,8 @@ local function generate_ctx(conf, options)
 
     ctx:preface('local core = require("apisix.core")')
     ctx:preface('local plugin = require("apisix.plugin")')
+    ctx:preface('local tablepool = core.tablepool')
+    ctx:preface('\n')
 
     ctx:stmt('return ', ctx:generate(data.rule, data.conf))
 

@@ -1,6 +1,6 @@
 local core = require("apisix.core")
 local plugin = require("apisix.plugin")
-local tablepool = require("apisix.tablepool")
+local tablepool = core.tablepool
 local _M = {}
 
 
@@ -100,7 +100,7 @@ _M.log = function(ctx)
       end
   end
 
-  ctx.plugins = tablepool.release("script_plugins", ctx.plugins)
+  tablepool.release("script_plugins", ctx.plugins)
 end
 
 
