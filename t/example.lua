@@ -1,6 +1,8 @@
 local core = require("apisix.core")
 local plugin = require("apisix.plugin")
 local tablepool = core.tablepool
+
+
 local _M = {}
 
 
@@ -10,15 +12,17 @@ local conf_11_22_33_44 = core.json.decode(
 local limit_count = plugin.get("limit-count")
 local function func_rule_11_22_33_44(conf, ctx)
   local phase_fun = limit_count.access or limit_count.rewrite
+  local plugins = ctx.plugins
+
   local code, _ = phase_fun(conf_11_22_33_44, ctx)
   if code == 503 then
-    core.table.insert(ctx.plugins, "response-rewrite")
-    core.table.insert(ctx.plugins, "yy-uu-ii-oo")
+    core.table.insert(plugins, "response-rewrite")
+    core.table.insert(plugins, "yy-uu-ii-oo")
     return _M.func_rule_yy_uu_ii_oo(conf, ctx)
   end
 
-    core.table.insert(ctx.plugins, "response-rewrite")
-    core.table.insert(ctx.plugins, "vv-cc-xx-zz")
+  core.table.insert(plugins, "response-rewrite")
+  core.table.insert(plugins, "vv-cc-xx-zz")
   return _M.func_rule_vv_cc_xx_zz(conf, ctx)
 end
 _M.func_rule_11_22_33_44 = func_rule_11_22_33_44
@@ -49,15 +53,15 @@ _M.func_rule_yy_uu_ii_oo = func_rule_yy_uu_ii_oo
 
 
 _M.access = function(ctx)
-  ctx.plugins = tablepool.fetch("script_plugins", 0, 32)
   return func_rule_11_22_33_44(ctx)
 end
 
 
 _M.header_filter = function(ctx)
-  for i = 1, #ctx.plugins, 2 do
-      local plugin_name = ctx.plugins[i]
-      local plugin_conf_name = ctx.plugins[i + 1]
+  local plugins = ctx.plugins
+  for i = 1, #plugins, 2 do
+      local plugin_name = plugins[i]
+      local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
       local phase_fun = plugin_obj.header_filter
       if phase_fun then
@@ -71,9 +75,10 @@ end
 
 
 _M.body_filter = function(ctx)
-  for i = 1, #ctx.plugins, 2 do
-      local plugin_name = ctx.plugins[i]
-      local plugin_conf_name = ctx.plugins[i + 1]
+  local plugins = ctx.plugins
+  for i = 1, #plugins, 2 do
+      local plugin_name = plugins[i]
+      local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
       local phase_fun = plugin_obj.header_filter
       if phase_fun then
@@ -87,9 +92,10 @@ end
 
 
 _M.log = function(ctx)
-  for i = 1, #ctx.plugins, 2 do
-      local plugin_name = ctx.plugins[i]
-      local plugin_conf_name = ctx.plugins[i + 1]
+  local plugins = ctx.plugins
+  for i = 1, #plugins, 2 do
+      local plugin_name = plugins[i]
+      local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
       local phase_fun = plugin_obj.header_filter
       if phase_fun then
@@ -99,7 +105,6 @@ _M.log = function(ctx)
           end
       end
   end
-
   tablepool.release("script_plugins", ctx.plugins)
 end
 
