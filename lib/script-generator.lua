@@ -61,11 +61,14 @@ function codectx_mt:generate(rule, conf)
     --rule
     root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf), "\n\n")
     -- other phase
-    root:stmt(sformat('%s = ', "_M.header_filter"), generate_common_phase(root:child()), "\n\n")
-    root:stmt(sformat('%s = ', "_M.body_filter"), generate_common_phase(root:child()), "\n\n")
+    root:stmt(sformat('%s = ', "_M.header_filter"),
+        generate_common_phase(root:child(), "header_filter"), "\n\n")
+    root:stmt(sformat('%s = ', "_M.body_filter"),
+        generate_common_phase(root:child(), "body_filter"), "\n\n")
 
     local release_plugins = 'tablepool.release("script_plugins", ctx.script_plugins)'
-    root:stmt(sformat('%s = ', "_M.log"), generate_common_phase(root:child(), release_plugins), "\n\n")
+    root:stmt(sformat('%s = ', "_M.log"),
+        generate_common_phase(root:child(), "log", release_plugins), "\n\n")
     return "_M"
 end
 
@@ -179,15 +182,17 @@ local function codectx(rule, conf, options)
 end
 
 
-generate_common_phase = function(ctx, tail_lua)
+generate_common_phase = function(ctx, phase, tail_lua)
     ctx:stmt(        'local plugins = ctx.script_plugins')
     ctx:stmt(        'for i = 1, #plugins, 2 do')
     ctx:stmt(        '    local plugin_name = plugins[i]')
     ctx:stmt(        '    local plugin_conf_name = plugins[i + 1]')
     ctx:stmt(        '    local plugin_obj = plugin.get(plugin_name)')
-    ctx:stmt(        '    local phase_fun = plugin_obj.header_filter')
+    ctx:stmt(        '    local phase_fun = plugin_obj.' .. phase)
     ctx:stmt(        '    if phase_fun then')
-    ctx:stmt(sformat('        local code, body = phase_fun(_M[plugin_conf_name], %s)', ctx:param("ctx")))
+    ctx:stmt(sformat('        local code, body = phase_fun(_M[plugin_conf_name], %s)',
+    ctx:param("ctx")))
+
     ctx:stmt(        '        if code or body then')
     ctx:stmt(        '            core.response.exit(code, body)')
     ctx:stmt(        '        end')
@@ -237,14 +242,17 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
     local conf_lua = conf_lua_name(rule_id)
     local func_lua = func_lua_name(rule_id)
 
-    root:preface("_M." .. conf_lua .. " = core.json.decode(\n    [[" .. json_encode(plugin_conf.conf) .. "]]\n)")
+    root:preface("_M." .. conf_lua .. " = core.json.decode(\n    [[" ..
+    json_encode(plugin_conf.conf) .. "]]\n)")
 
     -- plugin
     root:preface(sformat('local %s = plugin.get("%s")', plugin_name_lua, plugin_name))
     -- function
     root:preface(sformat('local function %s(ctx)', func_lua))
 
-    root:preface(sformat('  local phase_fun = %s.access or %s.rewrite', plugin_name_lua, plugin_name_lua))
+    root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
+        plugin_name_lua, plugin_name_lua))
+
     root:preface(        '  local plugins = ctx.script_plugins\n')
 
     root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', '_M.' .. conf_lua))
