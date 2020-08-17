@@ -26,7 +26,8 @@ endif
 
 ### test:         Run the test case
 test:
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/default.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/default.lua > t/generated.lua
+	luacheck t/generated.lua
 
 
 ### lint:             Lint Lua source code

@@ -116,7 +116,7 @@ function codectx_mt:_generate(code_table)
             insert_code(param, code_table)
         end
         insert_code(')\n', code_table)
-        indent = string.rep('  ', self._idx)
+        indent = string.rep('', self._idx)
     end
 
     for _, stmt in ipairs(self._body) do
