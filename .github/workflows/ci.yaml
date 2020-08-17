@@ -25,10 +25,15 @@ jobs:
         sudo apt-get -y install software-properties-common
         sudo add-apt-repository -y "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main"
         sudo apt-get update
-        sudo apt-get install openresty lua5.1 liblua5.1-0-dev     
+        sudo apt-get install openresty     
 
-    - uses: leafo/gh-actions-lua@v5
+    - uses: leafo/gh-actions-lua@v6
+      with:
+        luaVersion: "5.1.5"
+
     - uses: leafo/gh-actions-luarocks@v2
+      with:
+        luarocksVersion: "2.4.4"
 
     - name: install luacheck
       run: |
