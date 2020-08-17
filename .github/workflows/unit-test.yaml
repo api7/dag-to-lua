@@ -1,4 +1,4 @@
-name: ci
+name: unit-test
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  ci:
+  testing:
 
     runs-on: ubuntu-latest
 
