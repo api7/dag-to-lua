@@ -37,4 +37,5 @@ jobs:
 
     - name: make test
       run: |
-        make test        
+        make dev
+        make test
