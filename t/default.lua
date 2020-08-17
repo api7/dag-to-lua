@@ -28,7 +28,7 @@ local script = [[
         "yy-uu-ii-oo":{
             "name": "response-rewrite",
             "conf": {
-                "body":{"code":"ok","message":"request has been limited."},
+                "body":"request has been limited",
                 "headers":{
                     "X-limit-status": "limited"
                 }
@@ -37,7 +37,7 @@ local script = [[
         "vv-cc-xx-zz":{
             "name": "response-rewrite",
             "conf": {
-                "body":{"code":"ok","message":"normal request"},
+                "body":"normal request",
                 "headers":{
                     "X-limit-status": "normal"
                 }

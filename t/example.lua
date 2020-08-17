@@ -26,7 +26,7 @@
         "yy-uu-ii-oo":{
             "name": "response-rewrite",
             "conf": {
-                "body":{"code":"ok","message":"request has been limited."},
+                "body":"request has been limited.",
                 "headers":{
                     "X-limit-status": "limited"
                 }
@@ -35,7 +35,7 @@
         "vv-cc-xx-zz":{
             "name": "response-rewrite",
             "conf": {
-                "body":{"code":"ok","message":"normal request"},
+                "body":"normal request",
                 "headers":{
                     "X-limit-status": "normal"
                 }
@@ -53,66 +53,71 @@ local tablepool = core.tablepool
 local _M = {}
 
 
-local conf_11_22_33_44 = core.json.decode(
+_M.conf_11_22_33_44 = core.json.decode(
     [[{"time_window":60,"rejected_code":503,"count":2,"key":"remote_addr"}]]
 )
 local limit_count = plugin.get("limit-count")
-local function func_rule_11_22_33_44(conf, ctx)
+local function func_rule_11_22_33_44(ctx)
   local phase_fun = limit_count.access or limit_count.rewrite
-  local plugins = ctx.plugins
+  local plugins = ctx.script_plugins
 
-  local code, _ = phase_fun(conf_11_22_33_44, ctx)
+  local code, _ = phase_fun(_M.conf_11_22_33_44, ctx)
   if code == 503 then
     core.table.insert(plugins, "response-rewrite")
-    core.table.insert(plugins, "yy-uu-ii-oo")
-    return _M.func_rule_yy_uu_ii_oo(conf, ctx)
+    core.table.insert(plugins, "conf_yy_uu_ii_oo")
+    return _M.func_rule_yy_uu_ii_oo(ctx)
   end
 
   core.table.insert(plugins, "response-rewrite")
-  core.table.insert(plugins, "vv-cc-xx-zz")
-  return _M.func_rule_vv_cc_xx_zz(conf, ctx)
+  core.table.insert(plugins, "conf_vv_cc_xx_zz")
+  return _M.func_rule_vv_cc_xx_zz(ctx)
 end
 _M.func_rule_11_22_33_44 = func_rule_11_22_33_44
 
 
-local conf_vv_cc_xx_zz = core.json.decode(
-    [[{"body":{"message":"normal request","code":"ok"},"headers":{"X-limit-status":"normal"}}]]
+_M.conf_vv_cc_xx_zz = core.json.decode(
+    [[{"body":"normal request","headers":{"X-limit-status":"normal"}}]]
 )
 local response_rewrite = plugin.get("response-rewrite")
-local function func_rule_vv_cc_xx_zz(conf, ctx)
+local function func_rule_vv_cc_xx_zz(ctx)
   local phase_fun = response_rewrite.access or response_rewrite.rewrite
-  phase_fun(conf_vv_cc_xx_zz, ctx)
+  if phase_fun then
+    phase_fun(_M.conf_vv_cc_xx_zz, ctx)
+  end
   return
 end
 _M.func_rule_vv_cc_xx_zz = func_rule_vv_cc_xx_zz
 
 
-local conf_yy_uu_ii_oo = core.json.decode(
-    [[{"body":{"message":"request has been limited.","code":"ok"},"headers":{"X-limit-status":"limited"}}]]
+_M.conf_yy_uu_ii_oo = core.json.decode(
+    [[{"body":"request has been limited","headers":{"X-limit-status":"limited"}}]]
 )
 local response_rewrite = plugin.get("response-rewrite")
-local function func_rule_yy_uu_ii_oo(conf, ctx)
+local function func_rule_yy_uu_ii_oo(ctx)
   local phase_fun = response_rewrite.access or response_rewrite.rewrite
-  phase_fun(conf_yy_uu_ii_oo, ctx)
+  if phase_fun then
+    phase_fun(_M.conf_yy_uu_ii_oo, ctx)
+  end
   return
 end
 _M.func_rule_yy_uu_ii_oo = func_rule_yy_uu_ii_oo
 
 
 _M.access = function(ctx)
+  ctx.script_plugins = {}
   return func_rule_11_22_33_44(ctx)
 end
 
 
 _M.header_filter = function(ctx)
-  local plugins = ctx.plugins
+  local plugins = ctx.script_plugins
   for i = 1, #plugins, 2 do
       local plugin_name = plugins[i]
       local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
       local phase_fun = plugin_obj.header_filter
       if phase_fun then
-          local code, body = phase_fun(_M.conf[plugin_conf_name], ctx)
+          local code, body = phase_fun(_M[plugin_conf_name], ctx)
           if code or body then
               core.response.exit(code, body)
           end
@@ -122,14 +127,14 @@ end
 
 
 _M.body_filter = function(ctx)
-  local plugins = ctx.plugins
+  local plugins = ctx.script_plugins
   for i = 1, #plugins, 2 do
       local plugin_name = plugins[i]
       local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
-      local phase_fun = plugin_obj.header_filter
+      local phase_fun = plugin_obj.body_filter
       if phase_fun then
-          local code, body = phase_fun(_M.conf[plugin_conf_name], ctx)
+          local code, body = phase_fun(_M[plugin_conf_name], ctx)
           if code or body then
               core.response.exit(code, body)
           end
@@ -139,21 +144,22 @@ end
 
 
 _M.log = function(ctx)
-  local plugins = ctx.plugins
+  local plugins = ctx.script_plugins
   for i = 1, #plugins, 2 do
       local plugin_name = plugins[i]
       local plugin_conf_name = plugins[i + 1]
       local plugin_obj = plugin.get(plugin_name)
-      local phase_fun = plugin_obj.header_filter
+      local phase_fun = plugin_obj.log
       if phase_fun then
-          local code, body = phase_fun(_M.conf[plugin_conf_name], ctx)
+          local code, body = phase_fun(_M[plugin_conf_name], ctx)
           if code or body then
               core.response.exit(code, body)
           end
       end
   end
-  tablepool.release("script_plugins", ctx.plugins)
+  tablepool.release("script_plugins", ctx.script_plugins)
 end
 
 
 return _M
+
