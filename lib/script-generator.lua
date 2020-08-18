@@ -75,6 +75,7 @@ function codectx_mt:generate(rule, conf)
     local release_plugins = 'tablepool.release("script_plugins", ctx.script_plugins)'
     root:stmt(sformat('%s = ', "_M.log"),
         generate_common_phase(root:child(), "log", release_plugins), "\n\n")
+
     return "_M"
 end
 
@@ -406,12 +407,12 @@ local function generate_ctx(conf, options)
     ctx:preface('local tablepool = core.tablepool')
     ctx:preface('\n')
 
-    local obj, err = ctx:generate(data.rule, data.conf)
-    if err ~= nil then
+    local class_name, err = ctx:generate(data.rule, data.conf)
+    if err then
         return nil, err
     end
 
-    ctx:stmt('return ', obj)
+    ctx:stmt('return ', class_name)
 
     return ctx, nil
 end
