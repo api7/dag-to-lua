@@ -1,9 +1,10 @@
-local pairs = pairs
-local ipairs = ipairs
-local sformat = string.format
-local tab_concat = table.concat
-local tab_insert = table.insert
-local string = string
+local pairs       = pairs
+local ipairs      = ipairs
+local sformat     = string.format
+local tab_concat  = table.concat
+local tab_insert  = table.insert
+local string      = string
+local nkeys       = require("table.nkeys")
 local json_decode = require("cjson.safe").decode
 local json_encode = require("cjson.safe").encode
 
@@ -59,7 +60,12 @@ end
 function codectx_mt:generate(rule, conf)
     local root = self._root
     --rule
-    root:stmt(sformat('%s = ', "_M.access"), generate_rule(root:child(), rule, conf), "\n\n")
+    local rule_ctx, err = generate_rule(root:child(), rule, conf)
+    if err ~= nil then
+        return nil, err
+    end
+
+    root:stmt(sformat('%s = ', "_M.access"), rule_ctx, "\n\n")
     -- other phase
     root:stmt(sformat('%s = ', "_M.header_filter"),
         generate_common_phase(root:child(), "header_filter"), "\n\n")
@@ -69,6 +75,7 @@ function codectx_mt:generate(rule, conf)
     local release_plugins = 'tablepool.release("script_plugins", ctx.script_plugins)'
     root:stmt(sformat('%s = ', "_M.log"),
         generate_common_phase(root:child(), "log", release_plugins), "\n\n")
+
     return "_M"
 end
 
@@ -238,6 +245,10 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
     local plugin_name = plugin_conf.name
     local plugin_name_lua = plugin_lua_name(plugin_name)
 
+    if not plugin_conf then
+        return nil, "invalid conf!"
+    end
+
     -- conf
     local conf_lua = conf_lua_name(rule_id)
     local func_lua = func_lua_name(rule_id)
@@ -255,27 +266,34 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
     root:preface(        '  local plugins = ctx.script_plugins\n')
 
+    if #conditions < 1 then
+        return nil, "Can't config a single one plugin."
+    end
+
     root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', '_M.' .. conf_lua))
+
+    root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
+    root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua)))
 
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
         local func_target = func_lua_name(target_id)
         target_ids[target_id] = 1
         local target_plugin_conf = conf[target_id]
-        local target_plugin_name = target_plugin_conf.name
+        if not target_plugin_conf then
+            return nil, "invalid conf!"
+        end
+
         -- condition
         if condition_arr[1] ~= "" then
             root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    core.table.insert(plugins, %s)', q(target_plugin_name)))
-            root:preface(sformat('    core.table.insert(plugins, %s)', q(conf_lua_name(target_id))))
             root:preface(sformat('    return _M.%s(ctx)', func_target))
             root:preface(        '  end\n')
         else
-            root:preface(sformat('  core.table.insert(plugins, %s)', q(target_plugin_name)))
-            root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua_name(target_id))))
             root:preface(sformat('  return _M.%s(ctx)', func_target))
         end
     end
+
     root:preface(        'end')
     root:preface(sformat('_M.%s = %s\n\n', func_lua, func_lua))
 
@@ -285,6 +303,10 @@ end
 
 local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
     local root = ctx._root
+    if not plugin_conf then
+        return nil, "invalid conf!"
+    end
+
     local plugin_name = plugin_conf.name
     local plugin_name_lua = plugin_lua_name(plugin_name)
 
@@ -300,12 +322,17 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
     -- function
     root:preface(sformat('local function %s(ctx)', func_lua))
 
+    root:preface(        '  local plugins = ctx.script_plugins\n')
+
     root:preface(sformat('  local phase_fun = %s.access or %s.rewrite',
       plugin_name_lua, plugin_name_lua))
 
     root:preface(        '  if phase_fun then')
     root:preface(sformat('    phase_fun(%s, ctx)', '_M.' .. conf_lua))
     root:preface(        '  end')
+
+    root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
+    root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua)))
 
     root:preface(        '  return')
     root:preface(        'end')
@@ -317,7 +344,7 @@ end
 
 generate_rule = function (ctx, rules, conf)
     if type(rules) ~= "table" then
-        return nil
+        return nil, "invalid rules!"
     end
 
     local root = ctx._root
@@ -326,23 +353,40 @@ generate_rule = function (ctx, rules, conf)
 
     local rule_ids, target_ids = {}, {}
 
-    for rule_id, conditions in pairs(rules) do
-        if rule_id ~= "root" then
-            rule_ids[rule_id] = 1
-            _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
+    if not rules.root then
+        return nil, "invalid rules!"
+    end
+
+    if nkeys(rules) == 1 then
+        local _, err = _gen_rule_lua(ctx, rules.root, conf, {}, target_ids)
+        if err ~= nil then
+            return nil, err
+        end
+    else
+        for rule_id, conditions in pairs(rules) do
+            if rule_id ~= "root" then
+                rule_ids[rule_id] = 1
+                local _, err = _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
+                if err ~= nil then
+                    return nil, err
+                end
+            end
         end
     end
 
     for target_id,_ in pairs(target_ids) do
         -- last node
         if not rule_ids[target_id] then
-            _gen_last_rule_lua(ctx, target_id, conf[target_id])
+            local _, err = _gen_last_rule_lua(ctx, target_id, conf[target_id])
+            if err ~= nil then
+                return nil, err
+            end
         end
     end
 
     local root_func = func_lua_name(rules.root)
-    ctx:stmt('ctx.script_plugins = {}')
-    ctx:stmt(sformat("return %s(%s)", root_func, ctx:param("ctx")))
+    ctx:stmt('  ctx.script_plugins = {}')
+    ctx:stmt(sformat("  return %s(%s)", root_func, ctx:param("ctx")))
 
     return ctx
 end
@@ -363,7 +407,12 @@ local function generate_ctx(conf, options)
     ctx:preface('local tablepool = core.tablepool')
     ctx:preface('\n')
 
-    ctx:stmt('return ', ctx:generate(data.rule, data.conf))
+    local class_name, err = ctx:generate(data.rule, data.conf)
+    if err then
+        return nil, err
+    end
+
+    ctx:stmt('return ', class_name)
 
     return ctx, nil
 end

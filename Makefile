@@ -26,9 +26,12 @@ endif
 
 ### test:         Run the test case
 test:
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/conf-err.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/missing-config.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/no-root.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) resty t/default.lua > t/generated.lua
 	luacheck t/generated.lua
-
+	luacheck -q lib
 
 ### lint:             Lint Lua source code
 .PHONY: lint
