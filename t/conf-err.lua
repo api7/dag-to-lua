@@ -41,4 +41,4 @@ if err == nil then
     error("should return error here.")
 end
 
-ngx.say("test passed.")
+print("test passed.")
