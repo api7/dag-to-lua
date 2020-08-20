@@ -48,4 +48,4 @@ local script = [[
 ]]
 
 local code = script_generator.generate(script)
-ngx.say("------->\n", code)
+print(code)

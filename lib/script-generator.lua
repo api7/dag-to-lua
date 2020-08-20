@@ -4,9 +4,40 @@ local sformat     = string.format
 local tab_concat  = table.concat
 local tab_insert  = table.insert
 local string      = string
-local nkeys       = require("table.nkeys")
-local json_decode = require("cjson.safe").decode
-local json_encode = require("cjson.safe").encode
+
+
+
+local json_decode
+local json_encode
+do
+  local ok, cjson = pcall(require, 'cjson.safe')
+  if ok then
+    json_decode = require("cjson.safe").decode
+    json_encode = cjson.encode
+  else
+    local json = require "json"
+    json_decode = json.decode
+    json_encode = json.encode
+  end
+end
+
+
+local nkeys
+do
+  local ok, table_nkeys = pcall(require, 'table.nkeys')
+  if ok then
+    nkeys = table_nkeys
+  else
+    nkeys = function(t)
+      local count = 0
+      for _, _ in pairs(t) do
+        count = count + 1
+      end
+      return count
+    end
+  end
+end
+
 
 --
 -- Code generation
@@ -393,9 +424,10 @@ end
 
 
 local function generate_ctx(conf, options)
-    local data, err = json_decode(conf)
-    if data == nil then
-        return nil, err
+    -- local data, err = json_decode(conf)
+    local ok, data = pcall(json_decode, conf)
+    if not ok then
+        return nil, data
     end
 
     data.rule = data.rule or {}
