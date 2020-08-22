@@ -50,5 +50,4 @@ local _, err = script_generator.generate(script)
 if err == nil then
     error("should return error here.")
 end
-
 print("test passed.")
