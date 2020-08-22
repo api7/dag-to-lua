@@ -14,7 +14,7 @@ help:
 .PHONY: deps
 dev:
 	mkdir -p deps
-	luarocks install rockspec/script-generator-master-0.rockspec --only-deps --tree=deps --local
+	luarocks install rockspec/dag-to-lua-master-0.rockspec --only-deps --tree=deps --local
 
 
 ### test:         Run the test case

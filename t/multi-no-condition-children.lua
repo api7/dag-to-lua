@@ -1,4 +1,4 @@
-local script_generator = require 'script-generator'
+local dag_to_lua = require 'dag-to-lua'
 
 local script = [[
 {
@@ -60,7 +60,7 @@ local script = [[
 }
 ]]
 
-local code, err = script_generator.generate(script)
+local code, err = dag_to_lua.generate(script)
 if not err then
     error("should cause error when has more then one no-condition-children.")
 end

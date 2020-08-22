@@ -1,4 +1,4 @@
-local script_generator = require 'script-generator'
+local dag_to_lua = require 'dag-to-lua'
 
 local script = [[
 {
@@ -38,7 +38,7 @@ local script = [[
 }
 ]]
 
-local _, err = script_generator.generate(script)
+local _, err = dag_to_lua.generate(script)
 if err == nil then
     error("should return error here.")
 end
