@@ -1,8 +1,8 @@
 package = "dag-to-lua"
-version = "master-0"
+version = "1.0-0"
 source = {
   url = "git://github.com/api7/dag-to-lua.git",
-  branch = "master",
+  tag = "v1.0",
 }
 
 description = {
