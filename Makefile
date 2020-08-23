@@ -26,13 +26,13 @@ help:
 	@echo
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
 
-
-### dev:          Create a development ENV
-.PHONY: deps
-deps:
-	mkdir -p deps
-	luarocks install rockspec/dag-to-lua-master-0.rockspec --only-deps --tree=deps --local
-
+### utils:        Installation tools
+.PHONY: utils
+utils:
+ifeq ("$(wildcard utils/lj-releng)", "")
+	wget -O utils/lj-releng https://raw.githubusercontent.com/iresty/openresty-devel-utils/master/lj-releng
+	chmod a+x utils/lj-releng
+endif
 
 ### test:         Run the test case
 test:
@@ -47,7 +47,7 @@ test:
 	luacheck t/generated.lua
 	luacheck -q lib
 
-### lint:             Lint Lua source code
+### lint:         Lint Lua source code
 .PHONY: lint
 lint: utils
 	./utils/check-lua-code-style.sh

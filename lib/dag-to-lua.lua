@@ -22,7 +22,6 @@ local tab_insert  = table.insert
 local string      = string
 
 
-
 local json_decode
 local json_encode
 do
