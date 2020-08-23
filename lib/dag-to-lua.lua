@@ -297,32 +297,36 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
     root:preface(        '  local plugins = ctx.script_plugins\n')
 
-    if #conditions < 1 then
-        return nil, "Can't config a single one plugin."
-    end
-
     root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', '_M.' .. conf_lua))
 
     root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
     root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua)))
 
+    local no_condition_children = 0
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
-        local func_target = func_lua_name(target_id)
-        target_ids[target_id] = 1
-        local target_plugin_conf = conf[target_id]
-        if not target_plugin_conf then
-            return nil, "invalid conf!"
-        end
+        if target_id and target_id ~= "" then
+            local func_target = func_lua_name(target_id)
+            target_ids[target_id] = 1
+            local target_plugin_conf = conf[target_id]
+            if not target_plugin_conf then
+                return nil, "invalid conf!"
+            end
 
-        -- condition
-        if condition_arr[1] ~= "" then
-            root:preface(sformat('  if %s then', condition_arr[1]))
-            root:preface(sformat('    return _M.%s(ctx)', func_target))
-            root:preface(        '  end\n')
-        else
-            root:preface(sformat('  return _M.%s(ctx)', func_target))
+            -- condition
+            if condition_arr[1] and condition_arr[1] ~= "" then
+                root:preface(sformat('  if %s then', condition_arr[1]))
+                root:preface(sformat('    return _M.%s(ctx)', func_target))
+                root:preface(        '  end\n')
+            else
+                no_condition_children = no_condition_children + 1
+                root:preface(sformat('  return _M.%s(ctx)', func_target))
+            end
         end
+    end
+
+    if no_condition_children > 1 then
+        return nil, "can't have more then one no-condition children!"
     end
 
     root:preface(        'end')

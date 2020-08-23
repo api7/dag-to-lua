@@ -12,6 +12,10 @@ local script = [[
             [
                 "",
                 "vv-cc-xx-zz"
+            ],
+            [
+                "",
+                "vv-cc-xx-yy"
             ]
         ]
     },
@@ -32,12 +36,32 @@ local script = [[
                 "headers":{
                     "X-limit-status": "limited"
                 }
-            }        
+            }
+        },
+        "vv-cc-xx-zz":{
+            "name": "response-rewrite",
+            "conf": {
+                "body":"normal request",
+                "headers":{
+                    "X-limit-status": "normal"
+                }
+            }
+        },
+        "vv-cc-xx-yy":{
+            "name": "response-rewrite",
+            "conf": {
+                "body":"normal request",
+                "headers":{
+                    "X-limit-status": "normal"
+                }
+            }
+        }
+    }
 }
 ]]
 
-local _, err = dag_to_lua.generate(script)
-if err == nil then
-    error("should return error here.")
+local code, err = dag_to_lua.generate(script)
+if not err then
+    error("should cause error when has more then one no-condition-children.")
 end
 print("test passed.")

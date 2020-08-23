@@ -14,7 +14,7 @@ help:
 .PHONY: deps
 dev:
 	mkdir -p deps
-	luarocks install rockspec/script-generator-master-0.rockspec --only-deps --tree=deps --local
+	luarocks install rockspec/dag-to-lua-master-0.rockspec --only-deps --tree=deps --local
 
 
 ### test:         Run the test case
@@ -22,6 +22,10 @@ test:
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/conf-err.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/missing-config.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-root.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/single-child.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/empty-child.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-child.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/multi-no-condition-children.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/default.lua > t/generated.lua
 	luacheck t/generated.lua
 	luacheck -q lib

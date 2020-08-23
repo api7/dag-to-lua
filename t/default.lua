@@ -1,4 +1,4 @@
-local script_generator = require 'script-generator'
+local dag_to_lua = require 'dag-to-lua'
 
 local script = [[
 {
@@ -47,5 +47,5 @@ local script = [[
 }
 ]]
 
-local code = script_generator.generate(script)
+local code = dag_to_lua.generate(script)
 print(code)
