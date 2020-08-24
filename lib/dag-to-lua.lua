@@ -236,21 +236,16 @@ end
 
 
 generate_common_phase = function(ctx, phase, tail_lua)
-    ctx:stmt(        'local plugins = ctx.script_plugins')
-    ctx:stmt(        'for i = 1, #plugins, 2 do')
-    ctx:stmt(        '    local plugin_name = plugins[i]')
-    ctx:stmt(        '    local plugin_conf_name = plugins[i + 1]')
-    ctx:stmt(        '    local plugin_obj = plugin.get(plugin_name)')
-    ctx:stmt(        '    local phase_fun = plugin_obj.' .. phase)
-    ctx:stmt(        '    if phase_fun then')
-    ctx:stmt(sformat('        local code, body = phase_fun(_M[plugin_conf_name], %s)',
-    ctx:param("ctx")))
-
-    ctx:stmt(        '        if code or body then')
-    ctx:stmt(        '            core.response.exit(code, body)')
-    ctx:stmt(        '        end')
-    ctx:stmt(        '    end')
-    ctx:stmt(        'end')
+    ctx:stmt('local plugins = ctx.script_plugins')
+    ctx:stmt('for i = 1, #plugins, 2 do')
+    ctx:stmt('    local plugin_name = plugins[i]')
+    ctx:stmt('    local plugin_conf_name = plugins[i + 1]')
+    ctx:stmt('    local plugin_obj = plugin.get(plugin_name)')
+    ctx:stmt('    local phase_fun = plugin_obj.' .. phase)
+    ctx:stmt('    if phase_fun then')
+    ctx:stmt(sformat('        phase_fun(_M[plugin_conf_name], %s)', ctx:param("ctx")))
+    ctx:stmt('    end')
+    ctx:stmt('end')
     if tail_lua then
       ctx:stmt(      tail_lua)
     end
