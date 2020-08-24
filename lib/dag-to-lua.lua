@@ -373,7 +373,10 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
       plugin_name_lua, plugin_name_lua))
 
     root:preface(        '  if phase_fun then')
-    root:preface(sformat('    phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(sformat('    local code, body = phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(        '    if code or body then')
+    root:preface(        '      core.response.exit(code, body)')
+    root:preface(        '    end')
     root:preface(        '  end')
 
     root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
