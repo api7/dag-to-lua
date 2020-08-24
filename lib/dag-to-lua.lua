@@ -14,13 +14,18 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-local pairs       = pairs
-local ipairs      = ipairs
-local sformat     = string.format
-local tab_concat  = table.concat
-local tab_insert  = table.insert
-local string      = string
-
+local pairs      = pairs
+local ipairs     = ipairs
+local sformat    = string.format
+local tab_concat = table.concat
+local tab_insert = table.insert
+local string     = string
+local assert     = assert
+local select     = select
+local pcall      = pcall
+local type       = type
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 
 local json_decode
 local json_encode
