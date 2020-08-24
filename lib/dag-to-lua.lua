@@ -307,7 +307,7 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
     root:preface(        '  local plugins = ctx.script_plugins\n')
 
-    root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(sformat('  local code, body = phase_fun(%s, ctx)', '_M.' .. conf_lua))
 
     root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
     root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua)))
@@ -326,11 +326,7 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
             -- condition
             if condition_arr[1] and condition_arr[1] ~= "" then
-                if condition_children > 0 then
-                    root:preface(sformat('  else if %s then', condition_arr[1]))
-                else
-                    root:preface(sformat('  if %s then', condition_arr[1]))
-                end
+                root:preface(sformat('  if %s then', condition_arr[1]))
                 root:preface(sformat('    return _M.%s(ctx)', func_target))
                 root:preface(        '  end\n')
                 condition_children = condition_children + 1
@@ -343,7 +339,7 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
     -- don't have a no condtion child
     if no_condition_children == 0 and condition_children > 0 then
-        root:preface(                '  else if code or body then')
+        root:preface(                '  if code or body then')
         root:preface(                '    core.response.exit(code, body)')
         root:preface(                '  end')
     end

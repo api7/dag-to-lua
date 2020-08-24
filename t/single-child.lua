@@ -51,4 +51,4 @@ local code,err = dag_to_lua.generate(script)
 if err then
     error(err)
 end
-print("test passed.")
+print(code)
