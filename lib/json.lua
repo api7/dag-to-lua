@@ -21,6 +21,18 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 --
+local string   = string
+local error    = error
+local rawget   = rawget
+local next     = next
+local pairs    = pairs
+local type     = type
+local ipairs   = ipairs
+local table    = table
+local math     = math
+local tostring = tostring
+local select   = select
+local tonumber = tonumber
 
 local json = { _version = "0.1.2" }
 

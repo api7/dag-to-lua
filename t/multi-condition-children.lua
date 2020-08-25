@@ -19,86 +19,65 @@ local dag_to_lua = require 'dag-to-lua'
 local script = [[
 {
     "rule":{
-        "root": "node1",
-        "node1":[
+        "root": "11-22-33-44",
+        "11-22-33-44":[
             [
                 "code == 503",
-                "node2"
+                "yy-uu-ii-oo"
+            ],
+            [
+                "code == 401",
+                "vv-cc-xx-zz"
             ],
             [
                 "",
-                null
+                "vv-cc-xx-yy"
             ]
         ]
     },
     "conf":{
-        "node1":{
-            "name": "uri-blocker",
+        "11-22-33-44":{
+            "name": "limit-count",
             "conf": {
-                "block_rules": ["root.exe", "root.m+"]
+                "count":2,
+                "time_window":60,
+                "rejected_code":503,
+                "key":"remote_addr"
             }
         },
-        "node2":{
-            "name": "kafka-logger",
+        "yy-uu-ii-oo":{
+            "name": "response-rewrite",
             "conf": {
-                "broker_list" : {
-                    "127.0.0.1":9092
-                },
-                "kafka_topic" : "test2",
-                "key" : "key1"
+                "body":"request has been limited",
+                "headers":{
+                    "X-limit-status": "limited"
+                }
+            }
+        },
+        "vv-cc-xx-zz":{
+            "name": "response-rewrite",
+            "conf": {
+                "body":"normal request",
+                "headers":{
+                    "X-limit-status": "normal"
+                }
+            }
+        },
+        "vv-cc-xx-yy":{
+            "name": "response-rewrite",
+            "conf": {
+                "body":"normal request",
+                "headers":{
+                    "X-limit-status": "normal"
+                }
             }
         }
     }
 }
 ]]
 
-local code,err = dag_to_lua.generate(script)
+local code, err = dag_to_lua.generate(script)
 if err then
     error(err)
 end
-
-
-local dag_to_lua = require 'dag-to-lua'
-
-local script = [[
-{
-    "rule":{
-        "root": "node1",
-        "node1":[
-            [
-                "code == 503",
-                "node2"
-            ],
-            [
-                null,
-                null
-            ]
-        ]
-    },
-    "conf":{
-        "node1":{
-            "name": "uri-blocker",
-            "conf": {
-                "block_rules": ["root.exe", "root.m+"]
-            }
-        },
-        "node2":{
-            "name": "kafka-logger",
-            "conf": {
-                "broker_list" : {
-                    "127.0.0.1":9092
-                },
-                "kafka_topic" : "test2",
-                "key" : "key1"
-            }
-        }
-    }
-}
-]]
-
-local code,err = dag_to_lua.generate(script)
-if err then
-    error(err)
-end
-
 print(code)

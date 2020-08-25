@@ -14,13 +14,18 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-local pairs       = pairs
-local ipairs      = ipairs
-local sformat     = string.format
-local tab_concat  = table.concat
-local tab_insert  = table.insert
-local string      = string
-
+local pairs      = pairs
+local ipairs     = ipairs
+local sformat    = string.format
+local tab_concat = table.concat
+local tab_insert = table.insert
+local string     = string
+local assert     = assert
+local select     = select
+local pcall      = pcall
+local type       = type
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 
 local json_decode
 local json_encode
@@ -236,21 +241,16 @@ end
 
 
 generate_common_phase = function(ctx, phase, tail_lua)
-    ctx:stmt(        'local plugins = ctx.script_plugins')
-    ctx:stmt(        'for i = 1, #plugins, 2 do')
-    ctx:stmt(        '    local plugin_name = plugins[i]')
-    ctx:stmt(        '    local plugin_conf_name = plugins[i + 1]')
-    ctx:stmt(        '    local plugin_obj = plugin.get(plugin_name)')
-    ctx:stmt(        '    local phase_fun = plugin_obj.' .. phase)
-    ctx:stmt(        '    if phase_fun then')
-    ctx:stmt(sformat('        local code, body = phase_fun(_M[plugin_conf_name], %s)',
-    ctx:param("ctx")))
-
-    ctx:stmt(        '        if code or body then')
-    ctx:stmt(        '            core.response.exit(code, body)')
-    ctx:stmt(        '        end')
-    ctx:stmt(        '    end')
-    ctx:stmt(        'end')
+    ctx:stmt('local plugins = ctx.script_plugins')
+    ctx:stmt('for i = 1, #plugins, 2 do')
+    ctx:stmt('    local plugin_name = plugins[i]')
+    ctx:stmt('    local plugin_conf_name = plugins[i + 1]')
+    ctx:stmt('    local plugin_obj = plugin.get(plugin_name)')
+    ctx:stmt('    local phase_fun = plugin_obj.' .. phase)
+    ctx:stmt('    if phase_fun then')
+    ctx:stmt(sformat('        phase_fun(_M[plugin_conf_name], %s)', ctx:param("ctx")))
+    ctx:stmt('    end')
+    ctx:stmt('end')
     if tail_lua then
       ctx:stmt(      tail_lua)
     end
@@ -312,11 +312,12 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
 
     root:preface(        '  local plugins = ctx.script_plugins\n')
 
-    root:preface(sformat('  local code, _ = phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(sformat('  local code, body = phase_fun(%s, ctx)', '_M.' .. conf_lua))
 
     root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))
     root:preface(sformat('  core.table.insert(plugins, %s)', q(conf_lua)))
 
+    local condition_children = 0
     local no_condition_children = 0
     for key, condition_arr in pairs(conditions) do
         local target_id = condition_arr[2]
@@ -333,11 +334,19 @@ local function _gen_rule_lua(ctx, rule_id, conf, conditions, target_ids)
                 root:preface(sformat('  if %s then', condition_arr[1]))
                 root:preface(sformat('    return _M.%s(ctx)', func_target))
                 root:preface(        '  end\n')
+                condition_children = condition_children + 1
             else
                 no_condition_children = no_condition_children + 1
                 root:preface(sformat('  return _M.%s(ctx)', func_target))
             end
         end
+    end
+
+    -- don't have a no condtion child
+    if no_condition_children == 0 and condition_children > 0 then
+        root:preface(                '  if code or body then')
+        root:preface(                '    core.response.exit(code, body)')
+        root:preface(                '  end')
     end
 
     if no_condition_children > 1 then
@@ -378,7 +387,10 @@ local function _gen_last_rule_lua(ctx, rule_id, plugin_conf)
       plugin_name_lua, plugin_name_lua))
 
     root:preface(        '  if phase_fun then')
-    root:preface(sformat('    phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(sformat('    local code, body = phase_fun(%s, ctx)', '_M.' .. conf_lua))
+    root:preface(        '    if code or body then')
+    root:preface(        '      core.response.exit(code, body)')
+    root:preface(        '    end')
     root:preface(        '  end')
 
     root:preface(sformat('  core.table.insert(plugins, %s)', q(plugin_name)))

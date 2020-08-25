@@ -38,14 +38,19 @@ endif
 test:
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/conf-err.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/missing-config.lua
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-root.lua
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/single-child.lua
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/empty-child.lua
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-child.lua
 	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/multi-no-condition-children.lua
-	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/default.lua > t/generated.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-root.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/single-child.lua > t/generated.lua
 	luacheck t/generated.lua
-	luacheck -q lib
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/empty-child.lua > t/generated.lua
+	luacheck t/generated.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/multi-condition-children.lua > t/generated.lua
+	luacheck -u t/generated.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/default.lua > t/generated.lua
+	luacheck -u t/generated.lua
+	LUA_PATH=$(LUA_PATH) LUA_CPATH=$(LUA_CPATH) lua t/no-child.lua > t/generated.lua
+	luacheck -u t/generated.lua
+	luacheck lib
 
 ### lint:         Lint Lua source code
 .PHONY: lint
