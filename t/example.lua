@@ -14,7 +14,7 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-[[
+local script = [[
 {
     "rule":{
         "root": "11-22-33-44",
